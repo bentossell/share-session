@@ -18,22 +18,20 @@ if ! gh auth status &> /dev/null; then
   exit 1
 fi
 
-# If no session ID provided, try to find most recent
+# Default to current (most recently modified) session
 if [ -z "$SESSION_ID" ]; then
-  # Find most recently modified session
   latest_jsonl=$(find "$SESSIONS_DIR" -name "*.jsonl" -type f -exec stat -f "%m %N" {} \; 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
   
   if [ -z "$latest_jsonl" ]; then
     echo "Error: No sessions found in $SESSIONS_DIR"
-    echo "Run './scripts/list.sh' to see available sessions"
     exit 1
   fi
   
   SESSION_FILE="$latest_jsonl"
   SESSION_ID=$(basename "$(dirname "$SESSION_FILE")")
-  echo "Using most recent session: $SESSION_ID"
+  echo "Sharing current session: $SESSION_ID"
 else
-  # Find session by ID
+  # Find session by ID if explicitly requested
   SESSION_FILE=$(find "$SESSIONS_DIR" -path "*$SESSION_ID*" -name "*.jsonl" -type f 2>/dev/null | head -1)
   
   if [ -z "$SESSION_FILE" ] || [ ! -f "$SESSION_FILE" ]; then
@@ -41,6 +39,7 @@ else
     echo "Run './scripts/list.sh' to see available sessions"
     exit 1
   fi
+  echo "Sharing requested session: $SESSION_ID"
 fi
 
 echo "Session file: $SESSION_FILE"
