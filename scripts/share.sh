@@ -6,6 +6,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SESSIONS_DIR="${HOME}/.factory/sessions"
 SESSION_ID="$1"
+SESSION_TITLE="$2"  # Optional: title provided by agent
+
+
 
 # Check gh is available and authenticated
 if ! command -v gh &> /dev/null; then
@@ -74,9 +77,16 @@ echo "  - Markdown"
 
 echo ""
 
+# Use provided title or default
+if [ -z "$SESSION_TITLE" ]; then
+  SESSION_TITLE="Droid Session"
+fi
+echo "Title: $SESSION_TITLE"
+echo ""
+
 # Create gist with all three files
 echo "Creating gist with all formats..."
-GIST_URL=$(gh gist create --public=false "$HTML_FILE" "$MD_FILE" "$JSONL_FILE" 2>&1 | tail -1)
+GIST_URL=$(gh gist create --public=false --desc "$SESSION_TITLE" "$HTML_FILE" "$MD_FILE" "$JSONL_FILE" 2>&1 | tail -1)
 
 if [[ "$GIST_URL" == https://gist.github.com/* ]]; then
   GIST_ID=$(echo "$GIST_URL" | rev | cut -d'/' -f1 | rev)
