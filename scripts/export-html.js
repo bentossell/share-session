@@ -307,24 +307,36 @@ const cwd = sessionStart?.cwd ? escapeHtml(scrubSecrets(sessionStart.cwd)) : '';
 
 const css = `
 :root {
-  --accent: #8abeb7;
-  --border: #5f87ff;
-  --borderAccent: #00d7ff;
-  --success: #b5bd68;
-  --error: #cc6666;
-  --warning: #ffff00;
-  --muted: #808080;
-  --dim: #666666;
-  --text: #e5e5e7;
-  --thinkingText: #808080;
-  --selectedBg: #3a3a4a;
-  --userMessageBg: #343541;
-  --toolPendingBg: #282832;
-  --toolSuccessBg: #283228;
-  --toolErrorBg: #3c2828;
-  --body-bg: rgb(36, 37, 46);
-  --container-bg: rgb(44, 45, 55);
+  /* Factory Design System - Tungsten Dark Theme */
+  --primary: #d56a26;
+  --primary-light: #ffa469;
+  --accent: #d56a26;
+  --border: #342f2d;
+  --border-light: #a89895;
+  --success: #5b8e63;
+  --error: #d9363e;
+  --warning: #e3992a;
+  --muted: #80756f;
+  --dim: #59514d;
+  --text: #f2f0f0;
+  --text-secondary: #b3a9a4;
+  --thinkingText: #80756f;
+  --selectedBg: #282523;
+  --userMessageBg: #1d1b1a;
+  --toolPendingBg: #1d1b1a;
+  --toolSuccessBg: #1e3a2a;
+  --toolErrorBg: #3a1e1e;
+  --body-bg: #161413;
+  --container-bg: #1d1b1a;
+  --surface-3: #282523;
+  --surface-4: #342f2d;
   --line-height: 18px;
+  
+  /* Diff colors */
+  --diff-added-bg: #1e3a2a;
+  --diff-added-text: #b5f0b5;
+  --diff-removed-bg: #3a1e1e;
+  --diff-removed-text: #ffb0b0;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -348,8 +360,8 @@ body {
   height: 100vh;
   border-right: 1px solid var(--dim);
 }
-.sidebar-header { padding: 8px 12px; }
-.sidebar-header h1 { font-size: 12px; color: var(--borderAccent); margin-bottom: 2px; }
+.sidebar-header { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.sidebar-header h1 { font-size: 12px; color: var(--primary); margin-bottom: 2px; }
 .sidebar-meta { font-size: 10px; color: var(--muted); }
 .sidebar-controls { padding: 8px 8px 4px 8px; }
 .sidebar-search {
@@ -362,7 +374,7 @@ body {
   border: 1px solid var(--dim);
   border-radius: 3px;
 }
-.sidebar-search:focus { outline: none; border-color: var(--accent); }
+.sidebar-search:focus { outline: none; border-color: var(--primary); }
 .sidebar-filters {
   display: flex;
   padding: 4px 8px 8px 8px;
@@ -379,8 +391,8 @@ body {
   border-radius: 3px;
   cursor: pointer;
 }
-.filter-btn:hover { color: var(--text); border-color: var(--text); }
-.filter-btn.active { background: var(--accent); color: var(--body-bg); border-color: var(--accent); }
+.filter-btn:hover { color: var(--text); border-color: var(--border-light); }
+.filter-btn.active { background: var(--primary); color: var(--body-bg); border-color: var(--primary); }
 .tree-container { flex: 1; overflow: auto; padding: 4px 0; }
 .tree-node {
   padding: 2px 8px;
@@ -396,14 +408,14 @@ body {
 .tree-node.active { background: var(--selectedBg); }
 .tree-node.active .tree-content { font-weight: bold; }
 .tree-marker { flex-shrink: 0; margin-right: 4px; }
-.tree-role-user { color: var(--accent); }
+.tree-role-user { color: var(--primary-light); }
 .tree-role-assistant { color: var(--success); }
 .tree-role-tool { color: var(--muted); }
 .tree-muted { color: var(--dim); font-style: italic; }
 .tree-tool-node { padding-left: 16px; }
 .tree-content { color: var(--text); overflow: hidden; text-overflow: ellipsis; }
 .tree-status { padding: 4px 12px; font-size: 10px; color: var(--muted); }
-.help-bar { font-size: 11px; color: var(--warning); margin-bottom: var(--line-height); }
+.help-bar { font-size: 11px; color: var(--text-secondary); margin-bottom: var(--line-height); }
 
 /* Content */
 #content {
@@ -448,14 +460,14 @@ body {
 }
 .user-message:hover .copy-link-btn,
 .assistant-message:hover .copy-link-btn { opacity: 1; }
-.copy-link-btn:hover { background: var(--accent); color: var(--body-bg); border-color: var(--accent); }
-.copy-link-btn.copied { background: var(--success); color: white; border-color: var(--success); }
+.copy-link-btn:hover { background: var(--primary); color: var(--body-bg); border-color: var(--primary); }
+.copy-link-btn.copied { background: var(--success); color: var(--body-bg); border-color: var(--success); }
 
 /* Highlight for deep-linked messages */
 .user-message.highlight,
 .assistant-message.highlight { animation: highlight-pulse 2s ease-out; }
 @keyframes highlight-pulse {
-  0% { box-shadow: 0 0 0 3px var(--accent); }
+  0% { box-shadow: 0 0 0 3px var(--primary); }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 .assistant-message > .message-timestamp { padding-left: var(--line-height); }
@@ -472,7 +484,7 @@ body {
   font-style: italic;
   cursor: pointer;
 }
-.thinking-collapsed:hover { color: var(--accent); }
+.thinking-collapsed:hover { color: var(--primary); }
 .thinking-text {
   color: var(--thinkingText);
   font-style: italic;
@@ -508,31 +520,33 @@ body {
 /* Markdown */
 .markdown-content { white-space: pre-wrap; word-wrap: break-word; }
 .markdown-content h1, .markdown-content h2, .markdown-content h3 {
-  color: #f0c674;
+  color: var(--primary-light);
   margin: var(--line-height) 0 0 0;
   font-weight: bold;
   font-size: 1em;
 }
 .markdown-content code {
-  background: rgba(128, 128, 128, 0.2);
-  color: #8abeb7;
+  background: var(--surface-3);
+  color: var(--primary-light);
   padding: 0 4px;
   border-radius: 3px;
 }
 .markdown-content pre {
-  background: transparent;
+  background: var(--surface-3);
   margin: var(--line-height) 0;
   overflow-x: auto;
+  padding: var(--line-height);
+  border-radius: 4px;
 }
-.markdown-content pre code { display: block; background: none; color: var(--text); }
-.markdown-content a { color: #81a2be; text-decoration: underline; }
+.markdown-content pre code { display: block; background: none; color: var(--text); padding: 0; }
+.markdown-content a { color: #50acf2; text-decoration: underline; }
 .markdown-content ul, .markdown-content ol { padding-left: 2em; margin: var(--line-height) 0; }
 .markdown-content li { margin: 0; }
 .markdown-content blockquote {
-  border-left: 3px solid var(--muted);
+  border-left: 3px solid var(--primary);
   padding-left: var(--line-height);
   margin: var(--line-height) 0;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-style: italic;
 }
 
