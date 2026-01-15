@@ -312,16 +312,42 @@ function buildMessagesHtml(turns) {
     
     turn.tools.forEach(tool => {
       const status = tool.result ? 'success' : 'pending';
-      const preview = tool.result ? tool.result.substring(0, 200) : '';
-      const hasMore = tool.result && tool.result.length > 200;
+      
+      // Truncate input at 10 lines
+      const inputLines = tool.input.split('\n');
+      let inputPreview = tool.input;
+      let inputHasMore = false;
+      if (inputLines.length > 10) {
+        inputPreview = inputLines.slice(0, 10).join('\n');
+        inputHasMore = true;
+      }
+      const inputExpandableClass = inputHasMore ? 'expandable' : '';
+      
+      // Truncate result at 10 lines
+      let resultPreview = '';
+      let resultHasMore = false;
+      if (tool.result) {
+        const resultLines = tool.result.split('\n');
+        if (resultLines.length > 10) {
+          resultPreview = resultLines.slice(0, 10).join('\n');
+          resultHasMore = true;
+        } else {
+          resultPreview = tool.result;
+          resultHasMore = false;
+        }
+      }
+      const resultExpandableClass = resultHasMore ? 'expandable' : '';
       
       html += `
   <div class="tool-execution ${status}">
     <div class="tool-header"><span class="tool-name">${escapeHtml(tool.name)}</span></div>
-    <div class="tool-input"><pre>${escapeHtml(tool.input)}</pre></div>
-    ${tool.result ? `<div class="tool-output expandable">
-      <div class="output-preview"><pre>${escapeHtml(preview)}${hasMore ? '\n... (click to expand)' : ''}</pre></div>
-      <div class="output-full"><pre>${escapeHtml(tool.result)}</pre></div>
+    <div class="tool-input ${inputExpandableClass}">
+      <div class="output-preview"><pre>${escapeHtml(inputPreview)}${inputHasMore ? '\n... (click to expand)' : ''}</pre></div>
+      ${inputHasMore ? `<div class="output-full"><pre>${escapeHtml(tool.input)}</pre></div>` : ''}
+    </div>
+    ${tool.result ? `<div class="tool-output ${resultExpandableClass}">
+      <div class="output-preview"><pre>${escapeHtml(resultPreview)}${resultHasMore ? '\n... (click to expand)' : ''}</pre></div>
+      ${resultHasMore ? `<div class="output-full"><pre>${escapeHtml(tool.result)}</pre></div>` : ''}
     </div>` : ''}
   </div>`;
     });
@@ -541,6 +567,12 @@ body {
   word-break: break-word;
   color: var(--muted);
 }
+.tool-input { color: var(--muted); }
+.tool-input.expandable { cursor: pointer; }
+.tool-input.expandable:hover { opacity: 0.9; }
+.tool-input.expandable .output-full { display: none; }
+.tool-input.expandable.expanded .output-preview { display: none; }
+.tool-input.expandable.expanded .output-full { display: block; }
 .tool-output { margin-top: var(--line-height); color: var(--muted); }
 .tool-output.expandable { cursor: pointer; }
 .tool-output.expandable:hover { opacity: 0.9; }
@@ -711,7 +743,7 @@ const js = `
   // Toggle tool outputs
   const toggleToolOutputs = () => {
     toolOutputsExpanded = !toolOutputsExpanded;
-    document.querySelectorAll('.tool-output.expandable').forEach(el => {
+    document.querySelectorAll('.tool-input.expandable, .tool-output.expandable').forEach(el => {
       el.classList.toggle('expanded', toolOutputsExpanded);
     });
   };
@@ -721,6 +753,13 @@ const js = `
     el.addEventListener('click', () => {
       el.parentElement.querySelector('.thinking-text').style.display = '';
       el.style.display = 'none';
+    });
+  });
+
+  // Click handlers for tool inputs
+  document.querySelectorAll('.tool-input.expandable').forEach(el => {
+    el.addEventListener('click', () => {
+      el.classList.toggle('expanded');
     });
   });
 
@@ -783,9 +822,24 @@ const js = `
     });
   });
 
-  // Handle deep link on load
-  const params = new URLSearchParams(window.location.search);
-  const targetId = params.get('target');
+  // Handle deep link on load (works in iframe context too)
+  let targetId = null;
+  try {
+    // Try to get from parent window if we're in an iframe
+    if (window.parent && window.parent !== window) {
+      const parentParams = new URLSearchParams(window.parent.location.search);
+      targetId = parentParams.get('target');
+    }
+  } catch (e) {
+    // Cross-origin iframe, fall back to own URL
+  }
+  
+  // Fall back to own URL if not in iframe or couldn't access parent
+  if (!targetId) {
+    const params = new URLSearchParams(window.location.search);
+    targetId = params.get('target');
+  }
+  
   if (targetId) {
     const target = document.getElementById(targetId);
     if (target) {
