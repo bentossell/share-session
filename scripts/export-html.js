@@ -571,9 +571,9 @@ body {
 }
 .markdown-content pre code { display: block; background: none; color: var(--text); padding: 0; }
 .markdown-content a { color: #50acf2; text-decoration: underline; }
-.markdown-content ul, .markdown-content ol { padding-left: 1.2em; margin: var(--line-height) 0; margin-left: 1.5em; }
-.markdown-content li { margin: 6px 0; padding-left: 0.3em; }
-.markdown-content ul ul, .markdown-content ol ol, .markdown-content ul ol, .markdown-content ol ul { margin: 6px 0; }
+.markdown-content ul, .markdown-content ol { padding-left: 1.2em; margin: 0; margin-left: 0; }
+.markdown-content li { margin: 0; padding-left: 0.3em; list-style-position: outside; line-height: var(--line-height); }
+.markdown-content ul ul, .markdown-content ol ol, .markdown-content ul ol, .markdown-content ol ul { margin: 0; margin-left: 1em; }
 .markdown-content blockquote {
   border-left: 3px solid var(--primary);
   padding-left: var(--line-height);
@@ -762,6 +762,7 @@ const js = `
       .replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>')
       .replace(/\\*([^*]+)\\*/g, '<em>$1</em>')
       .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/((<li>.*<\\/li>\\s*)+)/gm, function(match) { return '<ul>' + match + '</ul>'; })
       .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
       .replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2" target="_blank">$1</a>');
     el.innerHTML = text;
