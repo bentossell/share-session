@@ -179,21 +179,16 @@
     }
 
     if (!gistId) {
-      // Show session list
+      // Show session list via server-side API (supports private gists)
       loadingText.textContent = 'Loading sessions...';
       
-      fetch(`https://api.github.com/users/${GITHUB_USERNAME}/gists?per_page=100`)
+      fetch('/api/gists')
         .then(r => {
-          if (!r.ok) throw new Error('Failed to fetch gists');
+          if (!r.ok) throw new Error('Failed to fetch sessions');
           return r.json();
         })
-        .then(gists => {
-          // Filter to session gists (have .html file from our export)
-          const sessionGists = gists.filter(g => {
-            const files = Object.keys(g.files);
-            return files.some(f => f.endsWith('.html')) && 
-                   files.some(f => f.endsWith('.jsonl'));
-          });
+        .then(sessionGists => {
+          if (sessionGists.error) throw new Error(sessionGists.error);
           
           loading.classList.add('hidden');
           list.classList.remove('hidden');
@@ -206,7 +201,7 @@
           sessions.innerHTML = sessionGists.map(g => {
             const title = g.description || 'Untitled Session';
             const date = formatDate(g.created_at);
-            const fileCount = Object.keys(g.files).length;
+            const fileCount = g.files;
             return `<a href="?${g.id}" class="session-item">
               <div class="session-title">${title}</div>
               <div class="session-meta">

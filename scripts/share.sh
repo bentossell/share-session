@@ -90,7 +90,7 @@ echo ""
 
 # Create gist with all three files
 echo "Creating gist with all formats..."
-GIST_URL=$(gh gist create --public --desc "$SESSION_TITLE" "$HTML_FILE" "$MD_FILE" "$JSONL_FILE" 2>&1 | tail -1)
+GIST_URL=$(gh gist create --desc "$SESSION_TITLE" "$HTML_FILE" "$MD_FILE" "$JSONL_FILE" 2>&1 | tail -1)
 
 if [[ "$GIST_URL" == https://gist.github.com/* ]]; then
   GIST_ID=$(echo "$GIST_URL" | rev | cut -d'/' -f1 | rev)
