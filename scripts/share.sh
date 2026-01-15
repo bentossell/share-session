@@ -3,13 +3,17 @@
 
 set -e
 
+# Source secrets for env vars like SHARE_SESSION_PREVIEW_URL
+[ -f "$HOME/.secrets" ] && source "$HOME/.secrets"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SESSIONS_DIR="${HOME}/.factory/sessions"
 SESSION_ID="$1"
 SESSION_TITLE="$2"  # Optional: title provided by agent
 SHARE_ARGS="$3"     # Optional: custom instructions (e.g., "ignore the last 4 messages")
 
-
+# Get current working directory for session matching
+CURRENT_CWD="${4:-$(pwd)}"
 
 # Check gh is available and authenticated
 if ! command -v gh &> /dev/null; then
@@ -22,9 +26,22 @@ if ! gh auth status &> /dev/null; then
   exit 1
 fi
 
-# Default to current (most recently modified) session
+# Default to current project's most recent session (based on cwd)
 if [ -z "$SESSION_ID" ]; then
-  latest_jsonl=$(find "$SESSIONS_DIR" -name "*.jsonl" -type f -exec stat -f "%m %N" {} \; 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+  # Convert cwd to session directory name format (slashes become dashes, leading dash)
+  CWD_ENCODED=$(echo "$CURRENT_CWD" | sed 's|/|-|g')
+  PROJECT_SESSION_DIR="$SESSIONS_DIR/$CWD_ENCODED"
+  
+  if [ -d "$PROJECT_SESSION_DIR" ]; then
+    # Find most recent session for THIS project
+    latest_jsonl=$(find "$PROJECT_SESSION_DIR" -name "*.jsonl" -type f -exec stat -f "%m %N" {} \; 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+  fi
+  
+  # Fallback to global most recent if no project session found
+  if [ -z "$latest_jsonl" ]; then
+    echo "Warning: No session found for current project, using most recent global session"
+    latest_jsonl=$(find "$SESSIONS_DIR" -name "*.jsonl" -type f -exec stat -f "%m %N" {} \; 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+  fi
   
   if [ -z "$latest_jsonl" ]; then
     echo "Error: No sessions found in $SESSIONS_DIR"

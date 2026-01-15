@@ -536,13 +536,14 @@ body {
 /* Thinking */
 .thinking-block { padding: var(--line-height); }
 .thinking-collapsed {
-  display: none;
+  display: block;
   color: var(--thinkingText);
   font-style: italic;
   cursor: pointer;
 }
 .thinking-collapsed:hover { color: var(--primary); }
 .thinking-text {
+  display: none;
   color: var(--thinkingText);
   font-style: italic;
   white-space: pre-wrap;
@@ -671,8 +672,11 @@ body {
 const js = `
 (function() {
   let filterMode = 'default';
-  let thinkingExpanded = true;
+  let thinkingExpanded = false;
   let toolOutputsExpanded = false;
+  // Initialize thinking blocks as collapsed
+  document.querySelectorAll('.thinking-text').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.thinking-collapsed').forEach(el => el.style.display = 'block');
 
   // Tree navigation
   document.querySelectorAll('.tree-node').forEach(node => {
@@ -733,7 +737,7 @@ const js = `
   const toggleThinking = () => {
     thinkingExpanded = !thinkingExpanded;
     document.querySelectorAll('.thinking-text').forEach(el => {
-      el.style.display = thinkingExpanded ? '' : 'none';
+      el.style.display = thinkingExpanded ? 'block' : 'none';
     });
     document.querySelectorAll('.thinking-collapsed').forEach(el => {
       el.style.display = thinkingExpanded ? 'none' : 'block';
@@ -751,7 +755,7 @@ const js = `
   // Click handlers for thinking blocks
   document.querySelectorAll('.thinking-collapsed').forEach(el => {
     el.addEventListener('click', () => {
-      el.parentElement.querySelector('.thinking-text').style.display = '';
+      el.parentElement.querySelector('.thinking-text').style.display = 'block';
       el.style.display = 'none';
     });
   });
@@ -812,8 +816,20 @@ const js = `
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const id = btn.dataset.id;
-      const baseUrl = window.location.href.split('#')[0].split('?')[0];
-      const url = baseUrl + '?target=' + id;
+      // Try to get the parent URL (if in iframe) for proper deep linking
+      let url;
+      try {
+        if (window.parent && window.parent !== window) {
+          const parentUrl = window.parent.location.href.split('&target=')[0];
+          url = parentUrl + '&target=' + id;
+        } else {
+          const baseUrl = window.location.href.split('#')[0].split('?')[0];
+          url = baseUrl + '?target=' + id;
+        }
+      } catch (e) {
+        const baseUrl = window.location.href.split('#')[0].split('?')[0];
+        url = baseUrl + '?target=' + id;
+      }
       
       navigator.clipboard.writeText(url).then(() => {
         btn.classList.add('copied');

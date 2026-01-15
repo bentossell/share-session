@@ -9,15 +9,19 @@
   <title>Session Preview</title>
   <style>
     :root {
-      --bg: rgb(36, 37, 46);
-      --bg-secondary: rgb(44, 45, 55);
-      --text: #e5e5e7;
-      --muted: #808080;
-      --dim: #666666;
-      --accent: #8abeb7;
-      --success: #b5bd68;
-      --error: #cc6666;
-      --border: #666666;
+      /* Factory Design System - Tungsten Dark Theme */
+      --bg: #282C34;
+      --bg-secondary: #21252B;
+      --text: #f2f0f0;
+      --text-secondary: #b3a9a4;
+      --muted: #80756f;
+      --dim: #59514d;
+      --accent: #d56a26;
+      --accent-light: #ffa469;
+      --success: #5b8e63;
+      --error: #d9363e;
+      --border: #342f2d;
+      --border-light: #a89895;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -36,9 +40,9 @@
       gap: 1.5rem;
     }
     .spinner {
-      width: 48px;
-      height: 48px;
-      border: 3px solid var(--border);
+      width: 40px;
+      height: 40px;
+      border: 2px solid var(--border);
       border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 1s linear infinite;
@@ -48,25 +52,25 @@
     .error-box {
       background: var(--bg-secondary);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 4px;
       padding: 2rem;
       max-width: 400px;
       text-align: center;
     }
     .error-icon {
-      width: 48px;
-      height: 48px;
+      width: 40px;
+      height: 40px;
       margin: 0 auto 1rem;
-      background: rgba(204, 102, 102, 0.1);
+      background: rgba(217, 54, 62, 0.15);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       color: var(--error);
-      font-size: 24px;
+      font-size: 18px;
     }
     .error-box h1 {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: bold;
       margin-bottom: 0.5rem;
     }
@@ -77,7 +81,7 @@
       color: var(--accent);
       text-decoration: none;
     }
-    .error-box a:hover { text-decoration: underline; }
+    .error-box a:hover { color: var(--accent-light); }
     iframe {
       position: fixed;
       top: 0;
@@ -91,37 +95,39 @@
 
     /* Session list */
     .session-list {
-      max-width: 800px;
+      max-width: 700px;
       margin: 0 auto;
       padding: 2rem;
     }
     .session-list h1 {
-      font-size: 16px;
+      font-size: 14px;
       color: var(--accent);
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.35rem;
+      font-weight: bold;
     }
     .session-list .subtitle {
       color: var(--muted);
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
       font-size: 11px;
     }
     .session-item {
       display: block;
       background: var(--bg-secondary);
       border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 1rem 1.25rem;
-      margin-bottom: 0.75rem;
+      border-radius: 4px;
+      padding: 0.875rem 1rem;
+      margin-bottom: 0.5rem;
       text-decoration: none;
       color: var(--text);
       transition: border-color 0.15s, background 0.15s;
     }
     .session-item:hover {
       border-color: var(--accent);
-      background: rgba(138, 190, 183, 0.05);
+      background: rgba(213, 106, 38, 0.08);
     }
     .session-title {
       font-weight: bold;
+      font-size: 12px;
       margin-bottom: 0.25rem;
     }
     .session-meta {
@@ -131,10 +137,12 @@
       gap: 1rem;
     }
     .session-date { color: var(--dim); }
+    .session-files { color: var(--dim); }
     .empty-state {
       text-align: center;
       padding: 3rem;
       color: var(--muted);
+      font-size: 11px;
     }
   </style>
 </head>
@@ -161,7 +169,9 @@
   <script>
     const GITHUB_USERNAME = 'bentossell';
     
-    const gistId = location.search.slice(1).split('&')[0] || location.hash.slice(1);
+    const params = new URLSearchParams(location.search);
+    const gistId = params.keys().next().value || location.hash.slice(1);
+    const targetId = params.get('target');
     const loading = document.getElementById('loading');
     const loadingText = document.getElementById('loading-text');
     const error = document.getElementById('error');
@@ -236,6 +246,32 @@
           loading.classList.add('hidden');
           viewer.classList.remove('hidden');
           viewer.srcdoc = html;
+          // Focus iframe when loaded so keyboard shortcuts work
+          viewer.onload = () => {
+            viewer.contentWindow.focus();
+            // Forward keyboard events from parent to iframe
+            document.addEventListener('keydown', (e) => {
+              if (e.ctrlKey && (e.key === 't' || e.key === 'o') || e.key === 'Escape') {
+                e.preventDefault();
+                const event = new KeyboardEvent('keydown', {
+                  key: e.key,
+                  ctrlKey: e.ctrlKey,
+                  bubbles: true
+                });
+                viewer.contentDocument.dispatchEvent(event);
+              }
+            });
+            // Handle deep linking - scroll to target message if specified
+            if (targetId) {
+              const target = viewer.contentDocument.getElementById(targetId);
+              if (target) {
+                setTimeout(() => {
+                  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  target.classList.add('highlight');
+                }, 200);
+              }
+            }
+          };
         })
         .catch(err => {
           showError(err.message);
