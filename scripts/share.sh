@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SESSIONS_DIR="${HOME}/.factory/sessions"
 SESSION_ID="$1"
 SESSION_TITLE="$2"  # Optional: title provided by agent
+SHARE_ARGS="$3"     # Optional: custom instructions (e.g., "ignore the last 4 messages")
 
 
 
@@ -61,22 +62,49 @@ echo ""
 # Get base name for exports
 BASE_NAME=$(basename "$SESSION_FILE" .jsonl)
 
+# Apply filtering if SHARE_ARGS provided (e.g., "ignore the last 4 messages")
+WORKING_FILE="$SESSION_FILE"
+if [ -n "$SHARE_ARGS" ]; then
+  echo "Processing custom instructions: $SHARE_ARGS"
+  FILTERED_FILE="/tmp/${BASE_NAME}_filtered.jsonl"
+  if node "$SCRIPT_DIR/filter-session.js" "$SESSION_FILE" "$FILTERED_FILE" "$SHARE_ARGS" 2>/dev/null; then
+    WORKING_FILE="$FILTERED_FILE"
+    msg_count=$(wc -l < "$WORKING_FILE" | tr -d ' ')
+    echo "After filtering: $msg_count events"
+  else
+    echo "Warning: Could not apply filter, using full session"
+  fi
+  echo ""
+fi
+
+# Security scan with droid exec (AI-powered secret detection)
+echo "Running AI security scan..."
+if ! "$SCRIPT_DIR/scan-secrets.sh" "$WORKING_FILE"; then
+  echo ""
+  echo "BLOCKED: Session contains sensitive data."
+  echo "The session will NOT be uploaded to prevent credential leakage."
+  # Cleanup filtered file if exists
+  [ -n "$FILTERED_FILE" ] && rm -f "$FILTERED_FILE"
+  exit 1
+fi
+echo ""
+
 # Export all formats
 echo "Exporting formats..."
 HTML_FILE="/tmp/${BASE_NAME}.html"
 MD_FILE="/tmp/${BASE_NAME}.md"
 JSONL_FILE="/tmp/${BASE_NAME}.jsonl"
 
-# Scrub and copy jsonl
-node "$SCRIPT_DIR/scrub-jsonl.js" "$SESSION_FILE" "$JSONL_FILE" 2>/dev/null
+# Scrub and copy jsonl (regex-based backup scrubber)
+node "$SCRIPT_DIR/scrub-jsonl.js" "$WORKING_FILE" "$JSONL_FILE" 2>/dev/null
 echo "  - JSONL (scrubbed)"
 
 # Export HTML
-node "$SCRIPT_DIR/export-html.js" "$SESSION_FILE" "$HTML_FILE" 2>/dev/null
+node "$SCRIPT_DIR/export-html.js" "$WORKING_FILE" "$HTML_FILE" 2>/dev/null
 echo "  - HTML (formatted viewer)"
 
 # Export MD  
-node "$SCRIPT_DIR/export-md.js" "$SESSION_FILE" "$MD_FILE" 2>/dev/null
+node "$SCRIPT_DIR/export-md.js" "$WORKING_FILE" "$MD_FILE" 2>/dev/null
 echo "  - Markdown"
 
 echo ""
@@ -117,8 +145,10 @@ if [[ "$GIST_URL" == https://gist.github.com/* ]]; then
   
   # Cleanup
   rm -f "$HTML_FILE" "$MD_FILE" "$JSONL_FILE"
+  [ -n "$FILTERED_FILE" ] && rm -f "$FILTERED_FILE"
 else
   echo "Error creating gist: $GIST_URL"
   rm -f "$HTML_FILE" "$MD_FILE" "$JSONL_FILE"
+  [ -n "$FILTERED_FILE" ] && rm -f "$FILTERED_FILE"
   exit 1
 fi
