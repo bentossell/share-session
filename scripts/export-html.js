@@ -142,13 +142,22 @@ function processMessages(messages) {
           } else if (block.type === 'text') {
             turn.text += (turn.text ? '\n\n' : '') + scrubSecrets(block.text);
           } else if (block.type === 'tool_use') {
-            turn.hasTools = true;
-            turn.tools.push({
-              id: block.id,
-              name: block.name,
-              input: scrubSecrets(JSON.stringify(block.input, null, 2)),
-              result: toolResults.get(block.id) || ''
-            });
+            // Special handling for ExitSpecMode - extract spec content
+            if (block.name === 'ExitSpecMode' && block.input && block.input.plan) {
+              turn.spec = {
+                title: block.input.title || 'Spec',
+                plan: scrubSecrets(block.input.plan),
+                options: block.input.optionNames || []
+              };
+            } else {
+              turn.hasTools = true;
+              turn.tools.push({
+                id: block.id,
+                name: block.name,
+                input: scrubSecrets(JSON.stringify(block.input, null, 2)),
+                result: toolResults.get(block.id) || ''
+              });
+            }
           }
         });
       } else if (typeof msg.content === 'string') {
@@ -227,6 +236,11 @@ function buildTreeHtml(turns) {
         nodes.push(`<div class="tree-node" data-target="${turn.id}" data-role="assistant"${hasTools}><span class="tree-role-assistant">assistant:</span> <span class="tree-content">${escapeHtml(preview)}${truncated}</span></div>`);
       }
       
+      // Show spec if present
+      if (turn.spec) {
+        nodes.push(`<div class="tree-node" data-target="${turn.id}" data-role="spec"><span class="tree-role-spec">📋 ${escapeHtml(turn.spec.title)}</span></div>`);
+      }
+      
       // Show each tool call as separate entry
       if (turn.tools && turn.tools.length > 0) {
         turn.tools.forEach((tool, toolIdx) => {
@@ -235,8 +249,8 @@ function buildTreeHtml(turns) {
         });
       }
       
-      // If no text and no tools, show placeholder
-      if (!turn.text && (!turn.tools || turn.tools.length === 0)) {
+      // If no text, no tools, and no spec, show placeholder
+      if (!turn.text && (!turn.tools || turn.tools.length === 0) && !turn.spec) {
         nodes.push(`<div class="tree-node" data-target="${turn.id}" data-role="assistant"><span class="tree-role-assistant">assistant:</span> <span class="tree-muted">(no text)</span></div>`);
       }
     }
@@ -278,6 +292,22 @@ function buildMessagesHtml(turns) {
     if (turn.text) {
       html += `
   <div class="assistant-text"><div class="markdown-content">${escapeHtml(turn.text)}</div></div>`;
+    }
+    
+    // Render spec block if present
+    if (turn.spec) {
+      const optionsHtml = turn.spec.options.length > 0 
+        ? `<div class="spec-options"><span class="spec-options-label">Options:</span> ${turn.spec.options.map(o => `<span class="spec-option">${escapeHtml(o)}</span>`).join(' ')}</div>`
+        : '';
+      html += `
+  <div class="spec-block">
+    <div class="spec-header">
+      <span class="spec-icon">📋</span>
+      <span class="spec-title">${escapeHtml(turn.spec.title)}</span>
+    </div>
+    ${optionsHtml}
+    <div class="spec-content markdown-content">${escapeHtml(turn.spec.plan)}</div>
+  </div>`;
     }
     
     turn.tools.forEach(tool => {
@@ -326,8 +356,8 @@ const css = `
   --toolPendingBg: #1d1b1a;
   --toolSuccessBg: #1e3a2a;
   --toolErrorBg: #3a1e1e;
-  --body-bg: #161413;
-  --container-bg: #1d1b1a;
+  --body-bg: #282C34;
+  --container-bg: #21252B;
   --surface-3: #282523;
   --surface-4: #342f2d;
   --line-height: 18px;
@@ -411,6 +441,7 @@ body {
 .tree-role-user { color: var(--primary-light); }
 .tree-role-assistant { color: var(--success); }
 .tree-role-tool { color: var(--muted); }
+.tree-role-spec { color: #b5b1fc; font-weight: bold; }
 .tree-muted { color: var(--dim); font-style: italic; }
 .tree-tool-node { padding-left: 16px; }
 .tree-content { color: var(--text); overflow: hidden; text-overflow: ellipsis; }
@@ -540,14 +571,62 @@ body {
 }
 .markdown-content pre code { display: block; background: none; color: var(--text); padding: 0; }
 .markdown-content a { color: #50acf2; text-decoration: underline; }
-.markdown-content ul, .markdown-content ol { padding-left: 2em; margin: var(--line-height) 0; }
-.markdown-content li { margin: 0; }
+.markdown-content ul, .markdown-content ol { padding-left: 1.2em; margin: var(--line-height) 0; margin-left: 1.5em; }
+.markdown-content li { margin: 6px 0; padding-left: 0.3em; }
+.markdown-content ul ul, .markdown-content ol ol, .markdown-content ul ol, .markdown-content ol ul { margin: 6px 0; }
 .markdown-content blockquote {
   border-left: 3px solid var(--primary);
   padding-left: var(--line-height);
   margin: var(--line-height) 0;
   color: var(--text-secondary);
   font-style: italic;
+}
+
+/* Spec blocks */
+.spec-block {
+  background: linear-gradient(135deg, rgba(181, 177, 252, 0.1) 0%, rgba(213, 106, 38, 0.05) 100%);
+  border: 1px solid #b5b1fc;
+  border-radius: 8px;
+  padding: var(--line-height);
+  margin: var(--line-height) 0;
+}
+.spec-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--line-height);
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(181, 177, 252, 0.3);
+}
+.spec-icon { font-size: 16px; }
+.spec-title {
+  font-weight: bold;
+  font-size: 14px;
+  color: #b5b1fc;
+}
+.spec-options {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: var(--line-height);
+  flex-wrap: wrap;
+}
+.spec-options-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.spec-option {
+  background: rgba(181, 177, 252, 0.2);
+  color: #b5b1fc;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.spec-content {
+  color: var(--text);
+}
+.spec-content h1, .spec-content h2, .spec-content h3 {
+  color: #b5b1fc;
 }
 
 /* Mobile */
