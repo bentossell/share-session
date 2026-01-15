@@ -92,15 +92,18 @@ if [[ "$GIST_URL" == https://gist.github.com/* ]]; then
   GIST_ID=$(echo "$GIST_URL" | rev | cut -d'/' -f1 | rev)
   USERNAME=$(gh api user --jq .login)
   
-  # Preview URL - update this to your deployed domain
-  PREVIEW_URL="https://sessions.bentossell.com?${GIST_ID}"
-  
   echo ""
   echo "Success!"
   echo "========="
   echo ""
-  echo "Preview: $PREVIEW_URL"
-  echo ""
+  
+  # Preview URL - set SHARE_SESSION_PREVIEW_URL env var to your deployed domain
+  # e.g. export SHARE_SESSION_PREVIEW_URL="https://sessions.example.com"
+  if [ -n "$SHARE_SESSION_PREVIEW_URL" ]; then
+    echo "Preview: ${SHARE_SESSION_PREVIEW_URL}?${GIST_ID}"
+    echo ""
+  fi
+  
   echo "Gist: $GIST_URL"
   echo ""
   echo "Raw files:"
