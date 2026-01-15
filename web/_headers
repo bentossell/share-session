@@ -1,0 +1,11 @@
+# Disable caching for the main page (session list is dynamic)
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+
+# Disable caching for API endpoints
+/api/*
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
