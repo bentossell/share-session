@@ -92,14 +92,20 @@ if [[ "$GIST_URL" == https://gist.github.com/* ]]; then
   GIST_ID=$(echo "$GIST_URL" | rev | cut -d'/' -f1 | rev)
   USERNAME=$(gh api user --jq .login)
   
+  # Preview URL - update this to your deployed domain
+  PREVIEW_URL="https://sessions.bentossell.com?${GIST_ID}"
+  
   echo ""
   echo "Success!"
   echo "========="
-  echo "Gist URL: $GIST_URL"
   echo ""
-  echo "Direct links:"
-  echo "  HTML: https://gist.githubusercontent.com/$USERNAME/$GIST_ID/raw/${BASE_NAME}.html"
-  echo "  MD:   https://gist.githubusercontent.com/$USERNAME/$GIST_ID/raw/${BASE_NAME}.md"
+  echo "Preview: $PREVIEW_URL"
+  echo ""
+  echo "Gist: $GIST_URL"
+  echo ""
+  echo "Raw files:"
+  echo "  HTML:  https://gist.githubusercontent.com/$USERNAME/$GIST_ID/raw/${BASE_NAME}.html"
+  echo "  MD:    https://gist.githubusercontent.com/$USERNAME/$GIST_ID/raw/${BASE_NAME}.md"
   echo "  JSONL: https://gist.githubusercontent.com/$USERNAME/$GIST_ID/raw/${BASE_NAME}.jsonl"
   
   # Cleanup

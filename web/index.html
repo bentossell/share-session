@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session Preview</title>
+  <style>
+    :root {
+      --bg: rgb(36, 37, 46);
+      --bg-secondary: rgb(44, 45, 55);
+      --text: #e5e5e7;
+      --muted: #808080;
+      --accent: #8abeb7;
+      --error: #cc6666;
+      --border: #666666;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
+      font-size: 12px;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .loading, .error-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading p { color: var(--muted); }
+    .error-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      max-width: 400px;
+      text-align: center;
+    }
+    .error-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 1rem;
+      background: rgba(204, 102, 102, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--error);
+      font-size: 24px;
+    }
+    .error-box h1 {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    .error-box p { color: var(--muted); font-size: 11px; }
+    .error-box a {
+      display: inline-block;
+      margin-top: 1rem;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .error-box a:hover { text-decoration: underline; }
+    iframe {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: var(--bg);
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Loading session...</p>
+  </div>
+  <div id="error" class="error-container hidden">
+    <div class="error-box">
+      <div class="error-icon">✕</div>
+      <h1>Failed to load session</h1>
+      <p id="error-message">Session not found</p>
+      <a href="/">← Back</a>
+    </div>
+  </div>
+  <iframe id="viewer" class="hidden"></iframe>
+
+  <script>
+    const gistId = location.search.slice(1) || location.hash.slice(1);
+    const loading = document.getElementById('loading');
+    const error = document.getElementById('error');
+    const errorMsg = document.getElementById('error-message');
+    const viewer = document.getElementById('viewer');
+
+    function showError(msg) {
+      loading.classList.add('hidden');
+      errorMsg.textContent = msg;
+      error.classList.remove('hidden');
+    }
+
+    if (!gistId) {
+      showError('No session ID provided');
+    } else {
+      fetch('https://api.github.com/gists/' + gistId)
+        .then(r => {
+          if (!r.ok) throw new Error('Session not found');
+          return r.json();
+        })
+        .then(gist => {
+          const htmlFile = Object.values(gist.files).find(f => f.filename.endsWith('.html'));
+          if (!htmlFile) throw new Error('No HTML file in gist');
+          if (htmlFile.truncated && htmlFile.raw_url) {
+            return fetch(htmlFile.raw_url).then(r => r.text());
+          }
+          return htmlFile.content;
+        })
+        .then(html => {
+          loading.classList.add('hidden');
+          viewer.classList.remove('hidden');
+          viewer.srcdoc = html;
+        })
+        .catch(err => {
+          showError(err.message);
+        });
+    }
+  </script>
+</body>
+</html>
