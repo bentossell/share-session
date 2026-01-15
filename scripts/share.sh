@@ -33,6 +33,10 @@ if [ -z "$SESSION_ID" ]; then
   SESSION_FILE="$latest_jsonl"
   SESSION_ID=$(basename "$(dirname "$SESSION_FILE")")
   echo "Sharing current session: $SESSION_ID"
+elif [ -f "$SESSION_ID" ]; then
+  # Direct file path provided
+  SESSION_FILE="$SESSION_ID"
+  echo "Sharing session file: $SESSION_FILE"
 else
   # Find session by ID if explicitly requested
   SESSION_FILE=$(find "$SESSIONS_DIR" -path "*$SESSION_ID*" -name "*.jsonl" -type f 2>/dev/null | head -1)

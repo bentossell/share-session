@@ -10,7 +10,9 @@
       --bg-secondary: rgb(44, 45, 55);
       --text: #e5e5e7;
       --muted: #808080;
+      --dim: #666666;
       --accent: #8abeb7;
+      --success: #b5bd68;
       --error: #cc6666;
       --border: #666666;
     }
@@ -20,6 +22,7 @@
       font-size: 12px;
       background: var(--bg);
       color: var(--text);
+      line-height: 1.5;
     }
     .loading, .error-container {
       display: flex;
@@ -82,12 +85,60 @@
       background: var(--bg);
     }
     .hidden { display: none !important; }
+
+    /* Session list */
+    .session-list {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .session-list h1 {
+      font-size: 16px;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    .session-list .subtitle {
+      color: var(--muted);
+      margin-bottom: 2rem;
+      font-size: 11px;
+    }
+    .session-item {
+      display: block;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+      text-decoration: none;
+      color: var(--text);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .session-item:hover {
+      border-color: var(--accent);
+      background: rgba(138, 190, 183, 0.05);
+    }
+    .session-title {
+      font-weight: bold;
+      margin-bottom: 0.25rem;
+    }
+    .session-meta {
+      font-size: 10px;
+      color: var(--muted);
+      display: flex;
+      gap: 1rem;
+    }
+    .session-date { color: var(--dim); }
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--muted);
+    }
   </style>
 </head>
 <body>
   <div id="loading" class="loading">
     <div class="spinner"></div>
-    <p>Loading session...</p>
+    <p id="loading-text">Loading session...</p>
   </div>
   <div id="error" class="error-container hidden">
     <div class="error-box">
@@ -97,14 +148,24 @@
       <a href="/">← Back</a>
     </div>
   </div>
+  <div id="list" class="session-list hidden">
+    <h1>Shared Sessions</h1>
+    <p class="subtitle">Droid conversation exports</p>
+    <div id="sessions"></div>
+  </div>
   <iframe id="viewer" class="hidden"></iframe>
 
   <script>
-    const gistId = location.search.slice(1) || location.hash.slice(1);
+    const GITHUB_USERNAME = 'bentossell';
+    
+    const gistId = location.search.slice(1).split('&')[0] || location.hash.slice(1);
     const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
     const error = document.getElementById('error');
     const errorMsg = document.getElementById('error-message');
     const viewer = document.getElementById('viewer');
+    const list = document.getElementById('list');
+    const sessions = document.getElementById('sessions');
 
     function showError(msg) {
       loading.classList.add('hidden');
@@ -112,9 +173,54 @@
       error.classList.remove('hidden');
     }
 
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
     if (!gistId) {
-      showError('No session ID provided');
+      // Show session list
+      loadingText.textContent = 'Loading sessions...';
+      
+      fetch(`https://api.github.com/users/${GITHUB_USERNAME}/gists?per_page=100`)
+        .then(r => {
+          if (!r.ok) throw new Error('Failed to fetch gists');
+          return r.json();
+        })
+        .then(gists => {
+          // Filter to session gists (have .html file from our export)
+          const sessionGists = gists.filter(g => {
+            const files = Object.keys(g.files);
+            return files.some(f => f.endsWith('.html')) && 
+                   files.some(f => f.endsWith('.jsonl'));
+          });
+          
+          loading.classList.add('hidden');
+          list.classList.remove('hidden');
+          
+          if (sessionGists.length === 0) {
+            sessions.innerHTML = '<div class="empty-state">No shared sessions yet</div>';
+            return;
+          }
+          
+          sessions.innerHTML = sessionGists.map(g => {
+            const title = g.description || 'Untitled Session';
+            const date = formatDate(g.created_at);
+            const fileCount = Object.keys(g.files).length;
+            return `<a href="?${g.id}" class="session-item">
+              <div class="session-title">${title}</div>
+              <div class="session-meta">
+                <span class="session-date">${date}</span>
+                <span>${fileCount} files</span>
+              </div>
+            </a>`;
+          }).join('');
+        })
+        .catch(err => {
+          showError(err.message);
+        });
     } else {
+      // Load specific session
       fetch('https://api.github.com/gists/' + gistId)
         .then(r => {
           if (!r.ok) throw new Error('Session not found');
