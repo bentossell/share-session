@@ -313,26 +313,29 @@ function buildMessagesHtml(turns) {
     turn.tools.forEach(tool => {
       const status = tool.result ? 'success' : 'pending';
       
-      // Truncate input at 10 lines
-      const inputLines = tool.input.split('\n');
-      let inputPreview = tool.input;
+      // Parse escaped newlines and truncate at 5 lines
+      const parseNewlines = (str) => str.replace(/\\n/g, '\n');
+      const inputParsed = parseNewlines(tool.input);
+      const inputLines = inputParsed.split('\n');
+      let inputPreview = inputParsed;
       let inputHasMore = false;
-      if (inputLines.length > 10) {
-        inputPreview = inputLines.slice(0, 10).join('\n');
+      if (inputLines.length > 5) {
+        inputPreview = inputLines.slice(0, 5).join('\n');
         inputHasMore = true;
       }
       const inputExpandableClass = inputHasMore ? 'expandable' : '';
       
-      // Truncate result at 10 lines
+      // Parse escaped newlines and truncate result at 5 lines
       let resultPreview = '';
       let resultHasMore = false;
       if (tool.result) {
-        const resultLines = tool.result.split('\n');
-        if (resultLines.length > 10) {
-          resultPreview = resultLines.slice(0, 10).join('\n');
+        const resultParsed = parseNewlines(tool.result);
+        const resultLines = resultParsed.split('\n');
+        if (resultLines.length > 5) {
+          resultPreview = resultLines.slice(0, 5).join('\n');
           resultHasMore = true;
         } else {
-          resultPreview = tool.result;
+          resultPreview = resultParsed;
           resultHasMore = false;
         }
       }
@@ -343,11 +346,11 @@ function buildMessagesHtml(turns) {
     <div class="tool-header"><span class="tool-name">${escapeHtml(tool.name)}</span></div>
     <div class="tool-input ${inputExpandableClass}">
       <div class="output-preview"><pre>${escapeHtml(inputPreview)}${inputHasMore ? '\n... (click to expand)' : ''}</pre></div>
-      ${inputHasMore ? `<div class="output-full"><pre>${escapeHtml(tool.input)}</pre></div>` : ''}
+      ${inputHasMore ? `<div class="output-full"><pre>${escapeHtml(inputParsed)}</pre></div>` : ''}
     </div>
     ${tool.result ? `<div class="tool-output ${resultExpandableClass}">
       <div class="output-preview"><pre>${escapeHtml(resultPreview)}${resultHasMore ? '\n... (click to expand)' : ''}</pre></div>
-      ${resultHasMore ? `<div class="output-full"><pre>${escapeHtml(tool.result)}</pre></div>` : ''}
+      ${resultHasMore ? `<div class="output-full"><pre>${escapeHtml(parseNewlines(tool.result))}</pre></div>` : ''}
     </div>` : ''}
   </div>`;
     });
@@ -752,6 +755,20 @@ const js = `
     });
   };
 
+  // Reset filters (for Escape key)
+  const resetFilters = () => {
+    searchInput.value = '';
+    filterMode = 'default';
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.filter-btn[data-filter="default"]').classList.add('active');
+    applyFilters();
+  };
+
+  // Expose functions globally for parent iframe access
+  window.toggleThinking = toggleThinking;
+  window.toggleToolOutputs = toggleToolOutputs;
+  window.resetFilters = resetFilters;
+
   // Click handlers for thinking blocks
   document.querySelectorAll('.thinking-collapsed').forEach(el => {
     el.addEventListener('click', () => {
@@ -777,11 +794,7 @@ const js = `
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      searchInput.value = '';
-      filterMode = 'default';
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      document.querySelector('.filter-btn[data-filter="default"]').classList.add('active');
-      applyFilters();
+      resetFilters();
     }
     if (e.ctrlKey && e.key === 't') {
       e.preventDefault();

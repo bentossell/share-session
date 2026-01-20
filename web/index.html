@@ -249,16 +249,17 @@
           // Focus iframe when loaded so keyboard shortcuts work
           viewer.onload = () => {
             viewer.contentWindow.focus();
-            // Forward keyboard events from parent to iframe
+            // Forward keyboard events from parent to iframe via exposed functions
             document.addEventListener('keydown', (e) => {
-              if (e.ctrlKey && (e.key === 't' || e.key === 'o') || e.key === 'Escape') {
+              if (e.ctrlKey && e.key === 't') {
                 e.preventDefault();
-                const event = new KeyboardEvent('keydown', {
-                  key: e.key,
-                  ctrlKey: e.ctrlKey,
-                  bubbles: true
-                });
-                viewer.contentDocument.dispatchEvent(event);
+                if (viewer.contentWindow.toggleThinking) viewer.contentWindow.toggleThinking();
+              } else if (e.ctrlKey && e.key === 'o') {
+                e.preventDefault();
+                if (viewer.contentWindow.toggleToolOutputs) viewer.contentWindow.toggleToolOutputs();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                if (viewer.contentWindow.resetFilters) viewer.contentWindow.resetFilters();
               }
             });
             // Handle deep linking - scroll to target message if specified
